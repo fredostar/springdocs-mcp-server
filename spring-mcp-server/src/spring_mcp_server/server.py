@@ -12,6 +12,24 @@ from spring_mcp_server.resources.spring_registry import REGISTRE_SPRING
 from spring_mcp_server.tools.fetch_page import recuperer_contenu_doc
 from spring_mcp_server.tools.search import rechercher_dans_spring_docs
 from spring_mcp_server.prompts.spring_prompts import PROMPTS_SPRING
+from spring_mcp_server.resources.migration_registry import (
+    REGISTRE_MIGRATION,
+    filtrer_par_tags,
+)
+from spring_mcp_server.resources.breaking_changes import (
+    BREAKING_CHANGES,
+    breaking_changes_par_tags,
+)
+from spring_mcp_server.tools.fetch_page import recuperer_contenu_doc
+from spring_mcp_server.tools.migration_guide import (
+    MIGRATIONS_SUPPORTEES,
+    generer_guide_migration,
+)
+from spring_mcp_server.tools.openrewrite import (
+    RECETTES_OPENREWRITE,
+    generer_config_openrewrite,
+)
+from spring_mcp_server.prompts.migration_prompts import PROMPTS_MIGRATION
 
 # Création du serveur MCP — Composable
 mcp = FastMCP(
@@ -20,6 +38,10 @@ mcp = FastMCP(
         "Serveur MCP de documentation Spring. "
         "Fournit des outils pour rechercher et consulter la documentation "
         "des modules Spring (Framework, Boot, Data, Security, AI). "
+        "Serveur MCP spécialisé en migration Spring Boot et Java. "
+        "Couvre : Spring Boot 2.x→3.x→3.5, Java 11→17→21, "
+        "javax→jakarta, Hibernate→Spring Data JDBC. "
+        "Fournit guides, breaking changes, recettes OpenRewrite et prompts experts. "
         "Toutes les réponses sont en français."
     ),
 )
@@ -27,6 +49,75 @@ mcp = FastMCP(
 
 # ─── TOOLS ───────────────────────────────────────────────────────────────────
 
+@mcp.tool(description=(
+        "Génère un guide de migration complet étape par étape. "
+        "Types disponibles : spring-boot-2-3, java-11-21, "
+        "hibernate-spring-data-jdbc, jakarta-javax."
+))
+async def guide_migration(
+        type_migration: str,
+        avec_contenu_officiel: bool = False,
+) -> str:
+    """Guide complet pour un type de migration donné."""
+    return await generer_guide_migration(type_migration, avec_contenu_officiel)
+
+
+@mcp.tool(description=(
+        "Retourne les breaking changes critiques pour un type de migration. "
+        "Tags disponibles : spring-boot-3, jakarta, hibernate, java17, java21, "
+        "spring-data-jdbc, virtual-threads."
+))
+async def breaking_changes_migration(tags: str) -> str:
+    """Liste les breaking changes critiques filtrés par tags (séparés par virgule)."""
+    liste_tags = tuple(t.strip() for t in tags.split(","))
+    bcs = breaking_changes_par_tags(*liste_tags)
+
+    if not bcs:
+        return f"Aucun breaking change trouvé pour les tags : {tags}"
+
+    lignes = [f"## Breaking changes pour : {tags}\n"]
+    for bc in bcs:
+        lignes.append(f"### ⚠️ {bc.titre}")
+        lignes.append(f"**Problème** : {bc.description}")
+        lignes.append(f"**Solution** : {bc.solution}\n")
+    return "\n".join(lignes)
+
+
+@mcp.tool(description=(
+        "Génère la configuration OpenRewrite Maven pour une migration. "
+        "Types : spring-boot-3, spring-boot-35, java-21, jakarta."
+))
+async def config_openrewrite(type_migration: str) -> str:
+    """Configuration OpenRewrite prête à l'emploi pour Maven."""
+    return generer_config_openrewrite(type_migration)
+
+
+@mcp.tool(description=(
+        "Récupère le contenu officiel d'une source de documentation de migration. "
+        "Clés disponibles dans le registre : spring-boot-2x-3x, java-17-21, etc."
+))
+async def lire_guide_officiel(cle_source: str) -> str:
+    """Fetch le contenu officiel d'une source du registre de migration."""
+    if cle_source not in REGISTRE_MIGRATION:
+        disponibles = ", ".join(REGISTRE_MIGRATION.keys())
+        return f"Source '{cle_source}' inconnue. Disponibles : {disponibles}"
+
+    source = REGISTRE_MIGRATION[cle_source]
+    contenu = await recuperer_contenu_doc(source.url)
+    return f"# {source.nom}\n\n{contenu}"
+
+
+@mcp.tool(description="Liste toutes les sources de migration disponibles, avec filtrage optionnel par tag.")
+async def lister_sources_migration(tag: str = "") -> str:
+    """Retourne le registre des sources de migration, filtré par tag si fourni."""
+    sources = filtrer_par_tags(tag) if tag else REGISTRE_MIGRATION
+    lignes = [f"## Sources de migration disponibles{f' (tag: {tag})' if tag else ''}\n"]
+    for cle, source in sources.items():
+        lignes.append(f"### `{cle}` — {source.nom}")
+        lignes.append(f"{source.description}")
+        lignes.append(f"Tags : {', '.join(source.tags)}")
+        lignes.append(f"URL : {source.url}\n")
+    return "\n".join(lignes)
 @mcp.tool(
     description=(
             "Recherche dans la documentation d'un module Spring. "
@@ -66,6 +157,44 @@ async def lister_modules_spring() -> str:
 
 
 # ─── RESOURCES ────────────────────────────────────────────────────────────────
+@mcp.resource("migration://registre")
+async def resource_registre() -> str:
+    """Registre complet de toutes les sources de migration."""
+    import json
+    return json.dumps(
+        {
+            cle: {
+                "nom": s.nom,
+                "url": s.url,
+                "description": s.description,
+                "tags": list(s.tags),
+            }
+            for cle, s in REGISTRE_MIGRATION.items()
+        },
+        ensure_ascii=False,
+        indent=2,
+    )
+
+
+@mcp.resource("migration://breaking-changes/{tag}")
+async def resource_breaking_changes(tag: str) -> str:
+    """Breaking changes filtrés par tag."""
+    bcs = breaking_changes_par_tags(tag)
+    import json
+    return json.dumps(
+        [{"titre": bc.titre, "description": bc.description, "solution": bc.solution}
+         for bc in bcs],
+        ensure_ascii=False,
+        indent=2,
+    )
+
+
+@mcp.resource("migration://types-supportes")
+async def resource_types_supportes() -> str:
+    """Types de migration supportés avec leurs étapes."""
+    import json
+    return json.dumps(MIGRATIONS_SUPPORTEES, ensure_ascii=False, indent=2)
+
 
 @mcp.resource("spring://modules")
 async def resource_modules() -> str:
@@ -93,6 +222,36 @@ async def resource_module(module_id: str) -> str:
 
 
 # ─── PROMPTS ──────────────────────────────────────────────────────────────────
+@mcp.prompt(description=PROMPTS_MIGRATION["analyser-code-pour-migration"]["description"])
+def prompt_analyser_code(code: str, version_java_cible: str = "21") -> str:
+    template = PROMPTS_MIGRATION["analyser-code-pour-migration"]["template"]
+    return template.format(code=code, version_java_cible=version_java_cible)
+
+
+@mcp.prompt(description=PROMPTS_MIGRATION["plan-migration-projet"]["description"])
+def prompt_plan_migration(
+        version_spring_boot_source: str,
+        version_spring_boot_cible: str,
+        version_java_source: str,
+        version_java_cible: str,
+        orm: str = "Hibernate/JPA",
+        modules_spring: str = "Web, Data JPA, Security",
+) -> str:
+    template = PROMPTS_MIGRATION["plan-migration-projet"]["template"]
+    return template.format(
+        version_spring_boot_source=version_spring_boot_source,
+        version_spring_boot_cible=version_spring_boot_cible,
+        version_java_source=version_java_source,
+        version_java_cible=version_java_cible,
+        orm=orm,
+        modules_spring=modules_spring,
+    )
+
+
+@mcp.prompt(description=PROMPTS_MIGRATION["migrer-entite-jpa-vers-jdbc"]["description"])
+def prompt_migrer_entite_jpa(code_entite_jpa: str) -> str:
+    template = PROMPTS_MIGRATION["migrer-entite-jpa-vers-jdbc"]["template"]
+    return template.format(code_entite_jpa=code_entite_jpa)
 
 @mcp.prompt(description="Aide à la migration entre deux versions de Spring Boot")
 def prompt_migration_spring_boot(version_source: str, version_cible: str) -> str:
