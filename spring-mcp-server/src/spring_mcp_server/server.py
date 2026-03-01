@@ -31,6 +31,20 @@ from spring_mcp_server.tools.openrewrite import (
 )
 from spring_mcp_server.prompts.migration_prompts import PROMPTS_MIGRATION
 
+from spring_mcp_server.resources.batch_registry import (
+    REGISTRE_BATCH,
+    filtrer_batch_par_tags,
+)
+from spring_mcp_server.resources.batch_breaking_changes import (
+    BATCH_BREAKING_CHANGES,
+    batch_breaking_changes_par_tags,
+)
+from spring_mcp_server.tools.batch_migration_guide import (
+    MIGRATIONS_BATCH_SUPPORTEES,
+    generer_guide_batch,
+)
+from spring_mcp_server.prompts.batch_prompts import PROMPTS_BATCH
+
 # Création du serveur MCP — Composable
 mcp = FastMCP(
     name="spring-documentation-mcp",
@@ -48,6 +62,52 @@ mcp = FastMCP(
 
 
 # ─── TOOLS ───────────────────────────────────────────────────────────────────
+@mcp.tool(description=(
+        "Génère un guide de migration Spring Batch complet avec exemples de code. "
+        "Types : spring-batch-4-5, spring-batch-5-52, spring-batch-java21."
+))
+async def guide_migration_batch(
+        type_migration: str,
+        avec_contenu_officiel: bool = False,
+) -> str:
+    """Guide complet de migration Spring Batch avec avant/après code."""
+    return await generer_guide_batch(type_migration, avec_contenu_officiel)
+
+
+@mcp.tool(description=(
+        "Retourne les breaking changes Spring Batch 5 avec exemples de code avant/après. "
+        "Tags : batch-5, job-builder, chunk, job-repository, observability, java21."
+))
+async def breaking_changes_batch(tags: str) -> str:
+    """Breaking changes Spring Batch filtrés par tags, avec code avant/après."""
+    liste_tags = tuple(t.strip() for t in tags.split(","))
+    bcs = batch_breaking_changes_par_tags(*liste_tags)
+
+    if not bcs:
+        return f"Aucun breaking change Spring Batch trouvé pour : {tags}"
+
+    lignes = [f"## Breaking changes Spring Batch — {tags}\n"]
+    for bc in bcs:
+        lignes.append(f"### ⚠️ {bc.titre}")
+        lignes.append(f"{bc.description}\n")
+        lignes.append("**Avant (Spring Batch 4)**")
+        lignes.append(f"```java{bc.avant}```")
+        lignes.append("**Après (Spring Batch 5)**")
+        lignes.append(f"```java{bc.apres}```\n")
+    return "\n".join(lignes)
+
+
+@mcp.tool(description="Liste les sources de documentation Spring Batch disponibles.")
+async def lister_sources_batch(tag: str = "") -> str:
+    """Retourne le registre des sources Batch, filtré par tag si fourni."""
+    sources = filtrer_batch_par_tags(tag) if tag else REGISTRE_BATCH
+    lignes = [f"## Sources Spring Batch{f' (tag: {tag})' if tag else ''}\n"]
+    for cle, source in sources.items():
+        lignes.append(f"### `{cle}` — {source.nom}")
+        lignes.append(f"{source.description}")
+        lignes.append(f"Tags : {', '.join(source.tags)}")
+        lignes.append(f"URL : {source.url}\n")
+    return "\n".join(lignes)
 
 @mcp.tool(description=(
         "Génère un guide de migration complet étape par étape. "
@@ -157,6 +217,46 @@ async def lister_modules_spring() -> str:
 
 
 # ─── RESOURCES ────────────────────────────────────────────────────────────────
+
+@mcp.resource("migration://batch/registre")
+async def resource_batch_registre() -> str:
+    """Registre complet des sources Spring Batch."""
+    import json
+    return json.dumps(
+        {
+            cle: {
+                "nom": s.nom,
+                "url": s.url,
+                "description": s.description,
+                "tags": list(s.tags),
+            }
+            for cle, s in REGISTRE_BATCH.items()
+        },
+        ensure_ascii=False,
+        indent=2,
+    )
+
+
+@mcp.resource("migration://batch/breaking-changes/{tag}")
+async def resource_batch_breaking_changes(tag: str) -> str:
+    """Breaking changes Spring Batch filtrés par tag, avec code avant/après."""
+    bcs = batch_breaking_changes_par_tags(tag)
+    import json
+    return json.dumps(
+        [
+            {
+                "titre": bc.titre,
+                "description": bc.description,
+                "avant": bc.avant,
+                "apres": bc.apres,
+                "tags": list(bc.tags),
+            }
+            for bc in bcs
+        ],
+        ensure_ascii=False,
+        indent=2,
+    )
+
 @mcp.resource("migration://registre")
 async def resource_registre() -> str:
     """Registre complet de toutes les sources de migration."""
@@ -222,6 +322,27 @@ async def resource_module(module_id: str) -> str:
 
 
 # ─── PROMPTS ──────────────────────────────────────────────────────────────────
+@mcp.prompt(description=PROMPTS_BATCH["migrer-job-batch-4-vers-5"]["description"])
+def prompt_migrer_job_batch(code_batch_4: str) -> str:
+    return PROMPTS_BATCH["migrer-job-batch-4-vers-5"]["template"].format(
+        code_batch_4=code_batch_4
+    )
+
+
+@mcp.prompt(description=PROMPTS_BATCH["analyser-job-pour-migration"]["description"])
+def prompt_analyser_job_batch(code_job: str) -> str:
+    return PROMPTS_BATCH["analyser-job-pour-migration"]["template"].format(
+        code_job=code_job
+    )
+
+
+@mcp.prompt(description=PROMPTS_BATCH["optimiser-batch-virtual-threads"]["description"])
+def prompt_optimiser_batch_virtual_threads(code_step: str) -> str:
+    return PROMPTS_BATCH["optimiser-batch-virtual-threads"]["template"].format(
+        code_step=code_step
+    )
+
+
 @mcp.prompt(description=PROMPTS_MIGRATION["analyser-code-pour-migration"]["description"])
 def prompt_analyser_code(code: str, version_java_cible: str = "21") -> str:
     template = PROMPTS_MIGRATION["analyser-code-pour-migration"]["template"]
