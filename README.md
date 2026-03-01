@@ -83,6 +83,9 @@ python -m spring_mcp_server.server
    
    # Terminal 2 : Lancer MCP Inspector
    mcp-inspector
+   
+   ou 
+   npx @modelcontextprotocol/inspector uv run spring-mcp-server
    ```
 
 3. **Configurer la connexion dans MCP Inspector**
