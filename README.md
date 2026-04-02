@@ -48,7 +48,7 @@ Permet aux clients MCP (Claude, autres outils IA) d'accéder à des outils et re
 
 1. **Cloner le repository ou naviguer vers le répertoire du projet**
    ```bash
-   cd /Users/fredericradigoy/Documents/mesProjets/springdocs/spring-mcp-server
+   cd $PROJECT_DIR/springdocs/spring-mcp-server
    ```
 
 2. **Installer les dépendances avec uv**
@@ -62,7 +62,7 @@ Permet aux clients MCP (Claude, autres outils IA) d'accéder à des outils et re
 ### Via uv (recommandé)
 
 ```bash
-cd /Users/fredericradigoy/Documents/mesProjets/springdocs/spring-mcp-server
+cd $PROJECT_DIR/springdocs/spring-mcp-server
 uv run spring-mcp-server
 ```
 
@@ -71,7 +71,7 @@ Le serveur démarre et attend les connexions MCP via stdio.
 ### Via Python directement
 
 ```bash
-cd /Users/fredericradigoy/Documents/mesProjets/springdocs/spring-mcp-server
+cd $PROJECT_DIR/springdocs/spring-mcp-server
 python -m spring_mcp_server.server
 ```
 
@@ -89,7 +89,7 @@ python -m spring_mcp_server.server
 2. **Lancer MCP Inspector avec le serveur en arrière-plan**
    ```bash
    # Terminal 1 : Démarrer le serveur MCP
-   cd /Users/fredericradigoy/Documents/mesProjets/springdocs/spring-mcp-server
+   cd $PROJECT_DIR/springdocs/spring-mcp-server
    uv run spring-mcp-server
    
    # Terminal 2 : Lancer MCP Inspector
