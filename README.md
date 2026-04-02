@@ -103,7 +103,7 @@ python -m spring_mcp_server.server
    - L'interface web s'ouvre automatiquement (généralement sur `http://localhost:5173`).
    - Sélectionner "Add Server" ou configurer la connexion vers :
      - **Commande** : `uv run spring-mcp-server`
-     - **Répertoire de travail** : `/Users/fredericradigoy/Documents/mesProjets/springdocs/spring-mcp-server`
+     - **Répertoire de travail** : `$PROJECT_DIR/springdocs/spring-mcp-server`
 
 4. **Tester les outils disponibles**
    
