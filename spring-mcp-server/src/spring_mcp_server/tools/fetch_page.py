@@ -3,11 +3,17 @@
 import httpx
 from bs4 import BeautifulSoup
 
+
 async def recuperer_contenu_doc(url: str) -> str:
     """Récupère et nettoie le contenu textuel d'une page de doc Spring."""
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        reponse = await client.get(url, follow_redirects=True)
-        reponse.raise_for_status()
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            reponse = await client.get(url, follow_redirects=True)
+            reponse.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        return f"Erreur HTTP {e.response.status_code} lors de l'accès à : {url}"
+    except httpx.RequestError:
+        return f"Impossible d'accéder à : {url}"
 
     soup = BeautifulSoup(reponse.text, "html.parser")
 

@@ -7,43 +7,35 @@ Architecture respectée :
 - Lifecycle : initialize/ready/notifications géré par FastMCP
 """
 
+import json
+
 from fastmcp import FastMCP
 from spring_mcp_server.resources.spring_registry import REGISTRE_SPRING
 from spring_mcp_server.tools.fetch_page import recuperer_contenu_doc
 from spring_mcp_server.tools.search import rechercher_dans_spring_docs
 from spring_mcp_server.prompts.spring_prompts import PROMPTS_SPRING
-from spring_mcp_server.resources.migration_registry import (
-    REGISTRE_MIGRATION,
-    filtrer_par_tags,
-)
-from spring_mcp_server.resources.breaking_changes import (
-    BREAKING_CHANGES,
-    breaking_changes_par_tags,
-)
-from spring_mcp_server.tools.fetch_page import recuperer_contenu_doc
-from spring_mcp_server.tools.migration_guide import (
-    MIGRATIONS_SUPPORTEES,
-    generer_guide_migration,
-)
-from spring_mcp_server.tools.openrewrite import (
-    RECETTES_OPENREWRITE,
-    generer_config_openrewrite,
-)
+from spring_mcp_server.resources.migration_registry import REGISTRE_MIGRATION, filtrer_par_tags
+from spring_mcp_server.resources.breaking_changes import breaking_changes_par_tags
+from spring_mcp_server.tools.migration_guide import MIGRATIONS_SUPPORTEES, generer_guide_migration
+from spring_mcp_server.tools.openrewrite import generer_config_openrewrite
 from spring_mcp_server.prompts.migration_prompts import PROMPTS_MIGRATION
-
-from spring_mcp_server.resources.batch_registry import (
-    REGISTRE_BATCH,
-    filtrer_batch_par_tags,
-)
-from spring_mcp_server.resources.batch_breaking_changes import (
-    BATCH_BREAKING_CHANGES,
-    batch_breaking_changes_par_tags,
-)
-from spring_mcp_server.tools.batch_migration_guide import (
-    MIGRATIONS_BATCH_SUPPORTEES,
-    generer_guide_batch,
-)
+from spring_mcp_server.resources.batch_registry import REGISTRE_BATCH, filtrer_batch_par_tags
+from spring_mcp_server.resources.batch_breaking_changes import batch_breaking_changes_par_tags
+from spring_mcp_server.tools.batch_migration_guide import generer_guide_batch
 from spring_mcp_server.prompts.batch_prompts import PROMPTS_BATCH
+
+# ─── HELPERS PRIVÉS ───────────────────────────────────────────────────────────
+
+def _formater_sources(titre: str, sources: dict) -> str:
+    """Formate un registre de sources en Markdown."""
+    lignes = [f"## {titre}\n"]
+    for cle, source in sources.items():
+        lignes.append(f"### `{cle}` — {source.nom}")
+        lignes.append(source.description)
+        lignes.append(f"Tags : {', '.join(source.tags)}")
+        lignes.append(f"URL : {source.url}\n")
+    return "\n".join(lignes)
+
 
 # Création du serveur MCP — Composable
 mcp = FastMCP(
@@ -88,12 +80,7 @@ async def breaking_changes_batch(tags: str) -> str:
 
     lignes = [f"## Breaking changes Spring Batch — {tags}\n"]
     for bc in bcs:
-        lignes.append(f"### ⚠️ {bc.titre}")
-        lignes.append(f"{bc.description}\n")
-        lignes.append("**Avant (Spring Batch 4)**")
-        lignes.append(f"```java{bc.avant}```")
-        lignes.append("**Après (Spring Batch 5)**")
-        lignes.append(f"```java{bc.apres}```\n")
+        lignes.append(bc.to_markdown())
     return "\n".join(lignes)
 
 
@@ -101,13 +88,8 @@ async def breaking_changes_batch(tags: str) -> str:
 async def lister_sources_batch(tag: str = "") -> str:
     """Retourne le registre des sources Batch, filtré par tag si fourni."""
     sources = filtrer_batch_par_tags(tag) if tag else REGISTRE_BATCH
-    lignes = [f"## Sources Spring Batch{f' (tag: {tag})' if tag else ''}\n"]
-    for cle, source in sources.items():
-        lignes.append(f"### `{cle}` — {source.nom}")
-        lignes.append(f"{source.description}")
-        lignes.append(f"Tags : {', '.join(source.tags)}")
-        lignes.append(f"URL : {source.url}\n")
-    return "\n".join(lignes)
+    titre = f"Sources Spring Batch{f' (tag: {tag})' if tag else ''}"
+    return _formater_sources(titre, sources)
 
 @mcp.tool(description=(
         "Génère un guide de migration complet étape par étape. "
@@ -137,9 +119,7 @@ async def breaking_changes_migration(tags: str) -> str:
 
     lignes = [f"## Breaking changes pour : {tags}\n"]
     for bc in bcs:
-        lignes.append(f"### ⚠️ {bc.titre}")
-        lignes.append(f"**Problème** : {bc.description}")
-        lignes.append(f"**Solution** : {bc.solution}\n")
+        lignes.append(bc.to_markdown())
     return "\n".join(lignes)
 
 
@@ -171,13 +151,8 @@ async def lire_guide_officiel(cle_source: str) -> str:
 async def lister_sources_migration(tag: str = "") -> str:
     """Retourne le registre des sources de migration, filtré par tag si fourni."""
     sources = filtrer_par_tags(tag) if tag else REGISTRE_MIGRATION
-    lignes = [f"## Sources de migration disponibles{f' (tag: {tag})' if tag else ''}\n"]
-    for cle, source in sources.items():
-        lignes.append(f"### `{cle}` — {source.nom}")
-        lignes.append(f"{source.description}")
-        lignes.append(f"Tags : {', '.join(source.tags)}")
-        lignes.append(f"URL : {source.url}\n")
-    return "\n".join(lignes)
+    titre = f"Sources de migration disponibles{f' (tag: {tag})' if tag else ''}"
+    return _formater_sources(titre, sources)
 @mcp.tool(
     description=(
             "Recherche dans la documentation d'un module Spring. "
@@ -221,7 +196,6 @@ async def lister_modules_spring() -> str:
 @mcp.resource("migration://batch/registre")
 async def resource_batch_registre() -> str:
     """Registre complet des sources Spring Batch."""
-    import json
     return json.dumps(
         {
             cle: {
@@ -241,7 +215,6 @@ async def resource_batch_registre() -> str:
 async def resource_batch_breaking_changes(tag: str) -> str:
     """Breaking changes Spring Batch filtrés par tag, avec code avant/après."""
     bcs = batch_breaking_changes_par_tags(tag)
-    import json
     return json.dumps(
         [
             {
@@ -260,7 +233,6 @@ async def resource_batch_breaking_changes(tag: str) -> str:
 @mcp.resource("migration://registre")
 async def resource_registre() -> str:
     """Registre complet de toutes les sources de migration."""
-    import json
     return json.dumps(
         {
             cle: {
@@ -280,7 +252,6 @@ async def resource_registre() -> str:
 async def resource_breaking_changes(tag: str) -> str:
     """Breaking changes filtrés par tag."""
     bcs = breaking_changes_par_tags(tag)
-    import json
     return json.dumps(
         [{"titre": bc.titre, "description": bc.description, "solution": bc.solution}
          for bc in bcs],
@@ -292,14 +263,12 @@ async def resource_breaking_changes(tag: str) -> str:
 @mcp.resource("migration://types-supportes")
 async def resource_types_supportes() -> str:
     """Types de migration supportés avec leurs étapes."""
-    import json
     return json.dumps(MIGRATIONS_SUPPORTEES, ensure_ascii=False, indent=2)
 
 
 @mcp.resource("spring://modules")
 async def resource_modules() -> str:
     """Resource : registre complet des modules Spring disponibles."""
-    import json
     return json.dumps(
         {cle: {"nom": m.nom, "url": m.url_base, "description": m.description}
          for cle, m in REGISTRE_SPRING.items()},

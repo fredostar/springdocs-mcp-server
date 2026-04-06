@@ -13,6 +13,13 @@ class BreakingChange:
     solution: str
     tags: tuple[str, ...]
 
+    def to_markdown(self) -> str:
+        return (
+            f"### ⚠️ {self.titre}\n"
+            f"**Problème** : {self.description}\n"
+            f"**Solution** : {self.solution}\n"
+        )
+
 
 BREAKING_CHANGES: list[BreakingChange] = [
     # ── Jakarta EE ───────────────────────────────────────────────────────────

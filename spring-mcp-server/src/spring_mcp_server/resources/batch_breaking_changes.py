@@ -14,6 +14,14 @@ class BatchBreakingChange:
     description: str
     tags: tuple[str, ...]
 
+    def to_markdown(self) -> str:
+        return (
+            f"### ⚠️ {self.titre}\n"
+            f"{self.description}\n\n"
+            f"**Avant (Spring Batch 4)**\n```java{self.avant}```\n\n"
+            f"**Après (Spring Batch 5)**\n```java{self.apres}```\n"
+        )
+
 
 BATCH_BREAKING_CHANGES: list[BatchBreakingChange] = [
     # ── JobBuilderFactory / StepBuilderFactory ────────────────────────────────

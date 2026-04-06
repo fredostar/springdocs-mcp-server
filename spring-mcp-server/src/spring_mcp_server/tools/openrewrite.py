@@ -2,6 +2,32 @@
 Tool dédié aux recettes OpenRewrite pour la migration.
 """
 
+_REWRITE_PLUGIN_VERSION = "5.34.1"
+_REWRITE_SPRING_VERSION = "5.19.0"
+_REWRITE_MIGRATE_JAVA_VERSION = "2.21.0"
+
+
+def _plugin_xml(recette: str, artifact_id: str, artifact_version: str) -> str:
+    return f"""
+<plugin>
+    <groupId>org.openrewrite.maven</groupId>
+    <artifactId>rewrite-maven-plugin</artifactId>
+    <version>{_REWRITE_PLUGIN_VERSION}</version>
+    <configuration>
+        <activeRecipes>
+            <recipe>{recette}</recipe>
+        </activeRecipes>
+    </configuration>
+    <dependencies>
+        <dependency>
+            <groupId>org.openrewrite.recipe</groupId>
+            <artifactId>{artifact_id}</artifactId>
+            <version>{artifact_version}</version>
+        </dependency>
+    </dependencies>
+</plugin>"""
+
+
 RECETTES_OPENREWRITE: dict[str, dict] = {
     "spring-boot-3": {
         "titre": "Migration complète vers Spring Boot 3",
@@ -9,24 +35,11 @@ RECETTES_OPENREWRITE: dict[str, dict] = {
         "description": "Migre automatiquement une application Spring Boot 2.x vers 3.x. "
                        "Inclut : javax→jakarta, mise à jour dépendances, "
                        "nouvelles auto-configurations.",
-        "configuration_maven": """
-<plugin>
-    <groupId>org.openrewrite.maven</groupId>
-    <artifactId>rewrite-maven-plugin</artifactId>
-    <version>5.34.1</version>
-    <configuration>
-        <activeRecipes>
-            <recipe>org.openrewrite.java.spring.boot3.UpgradeSpringBoot_3_0</recipe>
-        </activeRecipes>
-    </configuration>
-    <dependencies>
-        <dependency>
-            <groupId>org.openrewrite.recipe</groupId>
-            <artifactId>rewrite-spring</artifactId>
-            <version>5.19.0</version>
-        </dependency>
-    </dependencies>
-</plugin>""",
+        "configuration_maven": _plugin_xml(
+            "org.openrewrite.java.spring.boot3.UpgradeSpringBoot_3_0",
+            "rewrite-spring",
+            _REWRITE_SPRING_VERSION,
+        ),
         "commande": "mvn rewrite:run",
     },
     "spring-boot-35": {
@@ -34,24 +47,11 @@ RECETTES_OPENREWRITE: dict[str, dict] = {
         "recette": "org.openrewrite.java.spring.boot3.UpgradeSpringBoot_3_5",
         "description": "Migre vers Spring Boot 3.5. "
                        "Nécessite d'avoir appliqué la migration 3.0 au préalable.",
-        "configuration_maven": """
-<plugin>
-    <groupId>org.openrewrite.maven</groupId>
-    <artifactId>rewrite-maven-plugin</artifactId>
-    <version>5.34.1</version>
-    <configuration>
-        <activeRecipes>
-            <recipe>org.openrewrite.java.spring.boot3.UpgradeSpringBoot_3_5</recipe>
-        </activeRecipes>
-    </configuration>
-    <dependencies>
-        <dependency>
-            <groupId>org.openrewrite.recipe</groupId>
-            <artifactId>rewrite-spring</artifactId>
-            <version>5.19.0</version>
-        </dependency>
-    </dependencies>
-</plugin>""",
+        "configuration_maven": _plugin_xml(
+            "org.openrewrite.java.spring.boot3.UpgradeSpringBoot_3_5",
+            "rewrite-spring",
+            _REWRITE_SPRING_VERSION,
+        ),
         "commande": "mvn rewrite:run",
     },
     "java-21": {
@@ -59,24 +59,11 @@ RECETTES_OPENREWRITE: dict[str, dict] = {
         "recette": "org.openrewrite.java.migrate.UpgradeToJava21",
         "description": "Migre le code source vers Java 21. "
                        "Adopte les nouvelles APIs, supprime les usages dépréciés.",
-        "configuration_maven": """
-<plugin>
-    <groupId>org.openrewrite.maven</groupId>
-    <artifactId>rewrite-maven-plugin</artifactId>
-    <version>5.34.1</version>
-    <configuration>
-        <activeRecipes>
-            <recipe>org.openrewrite.java.migrate.UpgradeToJava21</recipe>
-        </activeRecipes>
-    </configuration>
-    <dependencies>
-        <dependency>
-            <groupId>org.openrewrite.recipe</groupId>
-            <artifactId>rewrite-migrate-java</artifactId>
-            <version>2.21.0</version>
-        </dependency>
-    </dependencies>
-</plugin>""",
+        "configuration_maven": _plugin_xml(
+            "org.openrewrite.java.migrate.UpgradeToJava21",
+            "rewrite-migrate-java",
+            _REWRITE_MIGRATE_JAVA_VERSION,
+        ),
         "commande": "mvn rewrite:run",
     },
     "jakarta": {
@@ -84,26 +71,11 @@ RECETTES_OPENREWRITE: dict[str, dict] = {
         "recette": "org.openrewrite.java.migrate.jakarta.JavaxMigrationToJakarta",
         "description": "Renomme tous les imports javax.* en jakarta.*. "
                        "Couvre JPA, Servlet, Validation, Mail, etc.",
-        "configuration_maven": """
-<plugin>
-    <groupId>org.openrewrite.maven</groupId>
-    <artifactId>rewrite-maven-plugin</artifactId>
-    <version>5.34.1</version>
-    <configuration>
-        <activeRecipes>
-            <recipe>
-                org.openrewrite.java.migrate.jakarta.JavaxMigrationToJakarta
-            </recipe>
-        </activeRecipes>
-    </configuration>
-    <dependencies>
-        <dependency>
-            <groupId>org.openrewrite.recipe</groupId>
-            <artifactId>rewrite-migrate-java</artifactId>
-            <version>2.21.0</version>
-        </dependency>
-    </dependencies>
-</plugin>""",
+        "configuration_maven": _plugin_xml(
+            "org.openrewrite.java.migrate.jakarta.JavaxMigrationToJakarta",
+            "rewrite-migrate-java",
+            _REWRITE_MIGRATE_JAVA_VERSION,
+        ),
         "commande": "mvn rewrite:run",
     },
 }

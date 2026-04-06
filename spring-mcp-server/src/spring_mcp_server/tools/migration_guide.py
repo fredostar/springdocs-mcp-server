@@ -3,10 +3,7 @@ Tool principal : génération de guide de migration étape par étape.
 Combine données statiques + fetch dynamique.
 """
 
-from spring_mcp_server.resources.migration_registry import (
-    REGISTRE_MIGRATION,
-    filtrer_par_tags,
-)
+from spring_mcp_server.resources.migration_registry import REGISTRE_MIGRATION
 from spring_mcp_server.resources.breaking_changes import breaking_changes_par_tags
 from spring_mcp_server.tools.fetch_page import recuperer_contenu_doc
 
@@ -95,9 +92,7 @@ async def generer_guide_migration(type_migration: str, avec_contenu_officiel: bo
     if bcs:
         lignes.append("\n## ⚠️ Breaking changes critiques\n")
         for bc in bcs:
-            lignes.append(f"### {bc.titre}")
-            lignes.append(f"**Problème** : {bc.description}")
-            lignes.append(f"**Solution** : {bc.solution}\n")
+            lignes.append(bc.to_markdown())
 
     # Sources de référence
     lignes.append("\n## Sources officielles\n")

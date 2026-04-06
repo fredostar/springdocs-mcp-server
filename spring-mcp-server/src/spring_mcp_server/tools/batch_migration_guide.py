@@ -3,10 +3,7 @@ Guide de migration Spring Batch — étapes + breaking changes + sources.
 Combine données statiques et fetch dynamique.
 """
 
-from spring_mcp_server.resources.batch_registry import (
-    REGISTRE_BATCH,
-    filtrer_batch_par_tags,
-)
+from spring_mcp_server.resources.batch_registry import REGISTRE_BATCH
 from spring_mcp_server.resources.batch_breaking_changes import (
     batch_breaking_changes_par_tags,
 )
@@ -95,12 +92,7 @@ async def generer_guide_batch(
     if bcs:
         lignes.append("\n## ⚠️ Breaking changes détaillés\n")
         for bc in bcs:
-            lignes.append(f"### {bc.titre}")
-            lignes.append(f"{bc.description}\n")
-            lignes.append("**Avant (Spring Batch 4)**")
-            lignes.append(f"```java{bc.avant}```\n")
-            lignes.append("**Après (Spring Batch 5)**")
-            lignes.append(f"```java{bc.apres}```\n")
+            lignes.append(bc.to_markdown())
 
     # Sources officielles
     lignes.append("\n## Sources officielles\n")
